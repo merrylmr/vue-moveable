@@ -5,7 +5,8 @@
           width:areas.width+'px',
           height:areas.height+'px',
           left:areas.x+'px',
-          top:areas.y+'px'
+          top:areas.y+'px',
+          transform:`rotate(${areas.rotate}deg)`
        }"
   >
     <div class="handle"
@@ -13,8 +14,12 @@
          :class="`handle-${item}`"
          :key="index">
     </div>
-    <div class="rotate">
+    <div class="rotate"
+         @mousedown.stop="rotateMouseDownHandle">
 
+    </div>
+    <div class="center">
+      {{parseInt(areas.rotate)}}
     </div>
   </div>
 </template>
@@ -25,6 +30,10 @@
   interface DataProps {
     handles: string[];
     areas: Rect;
+    centerPos: {
+      x: number;
+      y: number;
+    };
   }
 
   export default defineComponent({
@@ -49,7 +58,12 @@
           width: 200,
           height: 200,
           y: 0,
-          x: 0
+          x: 0,
+          rotate: 0
+        },
+        centerPos: {
+          x: 0,
+          y: 0
         }
       })
 
@@ -87,6 +101,39 @@
         document.body.addEventListener("mousemove", mouseMoveHandle)
         document.body.addEventListener("mouseup", mouseupHandle)
       }
+
+      const rotateMouseDownHandle = (e: MouseEvent) => {
+        e.preventDefault()
+        data.centerPos = {
+          x: data.areas.x + data.areas.width / 2,
+          y: data.areas.y + data.areas.height / 2
+        }
+        console.log('rotateMouseDownHandle', e)
+
+        const mouseMoveHandle = (e: MouseEvent) => {
+          // Math.atan2(e.clientY - centerPos.y, e.clientX - centerPos.x):算出来是一个弧度
+          // PI=180度 1度=PI/180
+          // 垂直坐标系下半轴
+          let deg: number = Math.atan2(e.clientY - data.centerPos.y, e.clientX - data.centerPos.x) * (180 / Math.PI) - 90
+          // 处理度数（y的下半轴为0度，顺时针）
+          if (deg < 0) {
+            deg += 360
+          }
+          data.areas.rotate = deg
+        }
+        // 根据传入的两个点，求角度，及起始点是x轴的真半轴、负半轴、y轴的正半轴、y轴的负半轴，顺时针or逆时针
+        // const getAngle = (px: number, py: number, mx: number, my: number, options: { clockwise: boolean, x: boolean }) => {
+        //
+        // }
+
+        const mouseUpHandle = (e: MouseEvent) => {
+          console.log('mouseUpHandle', e.clientX, e.clientY)
+          document.body.removeEventListener("mousemove", mouseMoveHandle)
+          document.body.removeEventListener("mouseup", mouseUpHandle)
+        }
+        document.body.addEventListener("mousemove", mouseMoveHandle)
+        document.body.addEventListener("mouseup", mouseUpHandle)
+      }
       const toRefsData = toRefs(data)
       watch(props.selectedArea, (n, o) => {
         console.log('watch selectedArea', n, o)
@@ -94,12 +141,14 @@
       })
       onMounted(() => {
         data.areas = {
+          rotate: 0,
           ...(props.selectedArea as Rect)
         }
       })
       return {
         ...toRefsData,
-        mouseDownHandle
+        mouseDownHandle,
+        rotateMouseDownHandle
       }
     }
   })
@@ -112,6 +161,17 @@
     min-height: 200px;
     border: 1px solid #48a0db;
     display: inline-block;
+
+    .center {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 10px;
+      height: 10px;
+      background-color: red;
+      border-radius: 50%;
+      transform: translate(-50, -50%);
+    }
   }
 
   .handle {
