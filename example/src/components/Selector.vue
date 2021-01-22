@@ -12,7 +12,9 @@
     <div class="handle"
          v-for="(item,index) in handles"
          :class="`handle-${item}`"
-         :key="index">
+         :key="index"
+         @mousedown.stop="resizeMouseDownHandle($event,item)"
+         :style="{'cursor':cursors[index]}">
     </div>
     <div class="rotate"
          @mousedown.stop="rotateMouseDownHandle">
@@ -30,6 +32,7 @@
   interface DataProps {
     handles: string[];
     areas: Rect;
+    cursors: string[];
     centerPos: {
       x: number;
       y: number;
@@ -54,6 +57,7 @@
     setup(props) {
       const data: DataProps = reactive({
         handles: ['tl', 'tc', 'tr', 'l', 'br', 'bc', 'bl', 'r'],
+        cursors: ['nw-resize', 'n-resize', 'ne-resize', 'w-resize', 'nw-resize', 's-resize', 'sw-resize', 'e-resize'],
         areas: {
           width: 200,
           height: 200,
@@ -134,6 +138,94 @@
         document.body.addEventListener("mousemove", mouseMoveHandle)
         document.body.addEventListener("mouseup", mouseUpHandle)
       }
+
+      const resizeMouseDownHandle = (e: MouseEvent, dir: string): void => {
+        console.log('resizeMouseDownHandle', e, dir)
+        const pos = {
+          x: e.clientX,
+          y: e.clientY
+        }
+        const diff = {
+          x: 0,
+          y: 0
+        }
+        // const fPoint = {
+        //   x: data.areas.x + data.areas.width / 2,
+        //   y: data.areas.y + data.areas.height / 2
+        // }
+        // const ePoint = {
+        //   x: data.areas.x,
+        //   y: data.areas.height + data.areas.y
+        // }
+        const mouseMoveHandle = (e: MouseEvent): void => {
+          console.log("mouseMoveHandle", e)
+          diff.x = e.clientX - pos.x
+          diff.y = e.clientY - pos.y
+
+          const rotate = data.areas.rotate || 0
+          switch (dir) {
+            case 'tc': // // 上中
+              // if (rotate) {
+              //   data.areas.x = (data.areas.x + diff.x) * Math.cos(rotate) + (data.areas.y + diff.y) * Math.sin(rotate)
+              // }
+              // const rotatedEPoint = {
+              //   x: ePoint.x * Math.cos(rotate) + ePoint.y * Math.sign(rotate),
+              //   y: ePoint.y * Math.cos(rotate) - ePoint.x * Math.sign(rotate),
+              // }
+              // const ef = data.areas.width / 2
+
+              data.areas.y = (data.areas.y + diff.y) * Math.cos(rotate) - (data.areas.x + diff.x) * Math.sin(rotate)
+              data.areas.height -= diff.y
+              // data.areas.x += (diff.y * Math.sin(data.areas.rotate || 0))
+              break
+            case 'tl':
+              data.areas.x += diff.x
+              data.areas.y += diff.y
+
+              data.areas.width -= diff.x
+              data.areas.height -= diff.y
+              break
+            case 'tr': // 上右
+              data.areas.y += diff.y
+
+              data.areas.width += diff.x
+              data.areas.height -= diff.y
+              break
+            case "l": // 左中
+              // 修改left
+              data.areas.x += diff.x
+              data.areas.width -= diff.x
+              break
+            case "r": // 右中
+              data.areas.width += diff.x
+              break
+            case 'bc': // 下中
+              data.areas.height += diff.y
+              break
+            case 'br': // 下右
+              data.areas.width += diff.x
+              data.areas.height += diff.y
+              break
+            case 'bl':
+              data.areas.x += diff.x
+              data.areas.width -= diff.x
+              data.areas.height += diff.y
+              break
+            default:
+              break
+          }
+
+          pos.x = e.clientX
+          pos.y = e.clientY
+        }
+        const mouseUpHandle = (e: MouseEvent): void => {
+          console.log("mouseUpHandle", e)
+          document.body.removeEventListener("mousemove", mouseMoveHandle)
+          document.body.removeEventListener("mouseup", mouseUpHandle)
+        }
+        document.body.addEventListener("mousemove", mouseMoveHandle)
+        document.body.addEventListener("mouseup", mouseUpHandle)
+      }
       const toRefsData = toRefs(data)
       watch(props.selectedArea, (n, o) => {
         console.log('watch selectedArea', n, o)
@@ -148,7 +240,8 @@
       return {
         ...toRefsData,
         mouseDownHandle,
-        rotateMouseDownHandle
+        rotateMouseDownHandle,
+        resizeMouseDownHandle
       }
     }
   })
@@ -157,8 +250,8 @@
 <style scoped lang="scss">
   .movable {
     position: absolute;
-    min-width: 200px;
-    min-height: 200px;
+    /*min-width: 200px;*/
+    /*min-height: 200px;*/
     border: 1px solid #48a0db;
     display: inline-block;
 
