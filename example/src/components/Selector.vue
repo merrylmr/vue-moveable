@@ -4,8 +4,8 @@
        :style="{
           width:areas.width+'px',
           height:areas.height+'px',
-          left:areas.x+'px',
-          top:areas.y+'px',
+          left:areas.x-areas.width/2+'px',
+          top:areas.y-areas.height/2+'px',
           transform:`rotate(${areas.rotate}deg)`
        }"
   >
@@ -109,8 +109,8 @@
       const rotateMouseDownHandle = (e: MouseEvent) => {
         e.preventDefault()
         data.centerPos = {
-          x: data.areas.x + data.areas.width / 2,
-          y: data.areas.y + data.areas.height / 2
+          x: data.areas.x,
+          y: data.areas.y
         }
         console.log('rotateMouseDownHandle', e)
 
@@ -139,84 +139,108 @@
         document.body.addEventListener("mouseup", mouseUpHandle)
       }
 
+      const copy = (data: any) => {
+        return JSON.parse(JSON.stringify(data))
+      }
+
       const resizeMouseDownHandle = (e: MouseEvent, dir: string): void => {
-        console.log('resizeMouseDownHandle', e, dir)
+        // 角度转幅度
+        const rotate = (data.areas.rotate || 0) * Math.PI / 180
+        // 上下斜率
+        const k = Math.tan(rotate)
+        const b = e.clientY - k * e.clientX
+        //  左右两边的斜率
+        const k1 = k === 0 ? 0 : -1 / k
+        const b1 = e.clientY - k1 * e.clientX
+
+        console.log('k:', k, 'b:', b, 'rotate:', rotate)
+        // 点到直线的距离
+        let d = 0
+        let detaX = 0
+        let detaY = 0
+        // 拖拽之前的大小
+        const beforeData = copy(data.areas)
+        let copyData: Rect = {
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0
+        }
         const pos = {
           x: e.clientX,
           y: e.clientY
         }
-        const diff = {
-          x: 0,
-          y: 0
-        }
-        // const fPoint = {
-        //   x: data.areas.x + data.areas.width / 2,
-        //   y: data.areas.y + data.areas.height / 2
-        // }
-        // const ePoint = {
-        //   x: data.areas.x,
-        //   y: data.areas.height + data.areas.y
-        // }
         const mouseMoveHandle = (e: MouseEvent): void => {
-          console.log("mouseMoveHandle", e)
-          diff.x = e.clientX - pos.x
-          diff.y = e.clientY - pos.y
-
-          const rotate = data.areas.rotate || 0
           switch (dir) {
-            case 'tc': // // 上中
-              // if (rotate) {
-              //   data.areas.x = (data.areas.x + diff.x) * Math.cos(rotate) + (data.areas.y + diff.y) * Math.sin(rotate)
-              // }
-              // const rotatedEPoint = {
-              //   x: ePoint.x * Math.cos(rotate) + ePoint.y * Math.sign(rotate),
-              //   y: ePoint.y * Math.cos(rotate) - ePoint.x * Math.sign(rotate),
-              // }
-              // const ef = data.areas.width / 2
+            case 'tc': // 上中
+              d = Math.abs(k * e.clientX - e.clientY + b) / Math.sqrt(k * k + 1)
+              detaX = d / 2 * Math.sin(rotate)
+              detaY = d / 2 * Math.cos(rotate)
+              console.log('d', d, 'detaX:', detaX, 'detaY:', detaY, pos.y - e.clientY)
 
-              data.areas.y = (data.areas.y + diff.y) * Math.cos(rotate) - (data.areas.x + diff.x) * Math.sin(rotate)
-              data.areas.height -= diff.y
-              // data.areas.x += (diff.y * Math.sin(data.areas.rotate || 0))
+              copyData = copy(beforeData)
+              copyData.x += detaX
+              copyData.y -= detaY
+              copyData.height += d
+              data.areas = copyData
               break
             case 'tl':
-              data.areas.x += diff.x
-              data.areas.y += diff.y
-
-              data.areas.width -= diff.x
-              data.areas.height -= diff.y
               break
             case 'tr': // 上右
-              data.areas.y += diff.y
 
-              data.areas.width += diff.x
-              data.areas.height -= diff.y
+
               break
             case "l": // 左中
-              // 修改left
-              data.areas.x += diff.x
-              data.areas.width -= diff.x
+              if (rotate) {
+                d = Math.abs(k1 * e.clientX - e.clientY + b1) / Math.sqrt(k1 * k1 + 1)
+              } else {
+                d =  pos.x-e.clientX
+              }
+              detaY = d / 2 * Math.sin(rotate)
+              detaX = d / 2 * Math.cos(rotate)
+
+              copyData = copy(beforeData)
+              copyData.x -= detaX
+              copyData.y -= detaY
+              copyData.width += d
+              data.areas = copyData
+
               break
             case "r": // 右中
-              data.areas.width += diff.x
+              if (rotate) {
+                d = Math.abs(k1 * e.clientX - e.clientY + b1) / Math.sqrt(k1 * k1 + 1)
+              } else {
+                d = e.clientX - pos.x
+              }
+              detaY = d / 2 * Math.sin(rotate)
+              detaX = d / 2 * Math.cos(rotate)
+
+              copyData = copy(beforeData)
+              copyData.x += detaX
+              copyData.y += detaY
+              copyData.width += d
+              data.areas = copyData
               break
             case 'bc': // 下中
-              data.areas.height += diff.y
+              d = Math.abs(k * e.clientX - e.clientY + b) / Math.sqrt(k * k + 1)
+              detaX = d / 2 * Math.sin(rotate)
+              detaY = d / 2 * Math.cos(rotate)
+              console.log('d', d, 'detaX:', detaX, 'detaY:', detaY, pos.y - e.clientY)
+
+              copyData = copy(beforeData)
+              copyData.x -= detaX
+              copyData.y += detaY
+              copyData.height += d
+              data.areas = copyData
               break
             case 'br': // 下右
-              data.areas.width += diff.x
-              data.areas.height += diff.y
+
               break
             case 'bl':
-              data.areas.x += diff.x
-              data.areas.width -= diff.x
-              data.areas.height += diff.y
               break
             default:
               break
           }
-
-          pos.x = e.clientX
-          pos.y = e.clientY
         }
         const mouseUpHandle = (e: MouseEvent): void => {
           console.log("mouseUpHandle", e)

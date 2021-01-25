@@ -14,7 +14,7 @@
     ></div>
     <Selector
       :selectedArea="selectedArea"
-      v-show="selectedElements.length"></Selector>
+     ></Selector>
   </div>
 </template>
 
@@ -49,8 +49,8 @@
         selectedArea: {
           width: 200,
           height: 200,
-          x: 0,
-          y: 0
+          x: 300,
+          y: 100
         }
       })
       const toRefsData = toRefs(data)
