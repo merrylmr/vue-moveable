@@ -153,6 +153,7 @@
         const k1 = k === 0 ? 0 : -1 / k
         const b1 = e.clientY - k1 * e.clientX
 
+
         console.log('k:', k, 'b:', b, 'rotate:', rotate)
         // 点到直线的距离
         let h = 0
@@ -172,6 +173,26 @@
           x: e.clientX,
           y: e.clientY
         }
+
+        // try {
+        //
+        // } catch (e) {
+        //   console.error('e', e)
+        // }
+
+        const a = {
+          x: (beforeData.x + beforeData.width) * Math.cos(rotate) + beforeData.y * Math.sin(rotate),
+          y: beforeData.y * Math.cos(rotate) - (beforeData.x + beforeData.width) * Math.sin(rotate)
+        }
+        const c = {
+          x: beforeData.x * Math.cos(rotate) + (beforeData.y + beforeData.height) * Math.sin(rotate),
+          y: (beforeData.y + beforeData.height) * Math.cos(rotate) - beforeData.x * Math.sin(rotate)
+        }
+
+        const slope = c.y - a.y ? -(c.x - a.x) / (c.y - a.y) : 0
+        const b2 = a.y - slope * a.x
+        console.log('pointA', a, 'pointC', c, slope, b2)
+
         const mouseMoveHandle = (e: MouseEvent): void => {
           switch (dir) {
             case 'tc': // 上中
@@ -195,30 +216,19 @@
             case 'tl':
               break
             case 'tr': // 上右
-              h = Math.abs(k * e.clientX - e.clientY + b) / Math.sqrt(k * k + 1)
-              if (k * e.clientX + b < e.clientY) {
-                h = -h
-              }
-              if (rotate) {
-                w = Math.abs(k1 * e.clientX - e.clientY + b1) / Math.sqrt(k1 * k1 + 1)
-                if ((e.clientY - b1) / k1 > e.clientX) {
-                  w = -w
-                }
-              } else {
-                w = e.clientX - pos.x
-              }
+              console.log('in tr case')
+              h = Math.abs(slope * e.clientX - e.clientY + b2) / Math.sqrt(slope * slope + 1)
 
-
-              detaX = w / 2
-              detaY = h / 2
+              detaY = h / 2 * Math.sin(Math.atan(slope))
+              detaX = h / 2 * Math.cos(Math.atan(slope))
+              console.log('h', h, 'detaY:', detaY, 'detaX:', detaX)
 
               copyData = copy(beforeData)
               copyData.x += detaX
               copyData.y -= detaY
-              copyData.width += w
-              copyData.height += h
+              copyData.height += 2 * detaY
+              copyData.width += 2 * detaX
               data.areas = copyData
-
               break
             case "l": // 左中
               if (rotate) {
