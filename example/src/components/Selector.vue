@@ -155,9 +155,11 @@
 
         console.log('k:', k, 'b:', b, 'rotate:', rotate)
         // 点到直线的距离
-        let d = 0
+        let h = 0
+        let w = 0
         let detaX = 0
         let detaY = 0
+
         // 拖拽之前的大小
         const beforeData = copy(data.areas)
         let copyData: Rect = {
@@ -173,64 +175,115 @@
         const mouseMoveHandle = (e: MouseEvent): void => {
           switch (dir) {
             case 'tc': // 上中
-              d = Math.abs(k * e.clientX - e.clientY + b) / Math.sqrt(k * k + 1)
-              detaX = d / 2 * Math.sin(rotate)
-              detaY = d / 2 * Math.cos(rotate)
-              console.log('d', d, 'detaX:', detaX, 'detaY:', detaY, pos.y - e.clientY)
-
+              h = Math.abs(k * e.clientX - e.clientY + b) / Math.sqrt(k * k + 1)
+              // 需要判断是拉伸还是压缩（即h的正负问题，转换成判断点在直线上方还是下方，）
+              // 在直线"上方"：k * e.clientX + b>=e.clientY,取"+"即可
+              // 在直线"下方"：k * e.clientX + b<e.clientY,取"-"即可
+              // y=kx+b
+              if (k * e.clientX + b < e.clientY) {
+                h = -h
+              }
+              detaX = h / 2 * Math.sin(rotate)
+              detaY = h / 2 * Math.cos(rotate)
+              console.log('h', h, 'detaX:', detaX, 'detaY:', detaY, pos.y - e.clientY)
               copyData = copy(beforeData)
               copyData.x += detaX
               copyData.y -= detaY
-              copyData.height += d
+              copyData.height += h
               data.areas = copyData
               break
             case 'tl':
               break
             case 'tr': // 上右
+              h = Math.abs(k * e.clientX - e.clientY + b) / Math.sqrt(k * k + 1)
+              if (k * e.clientX + b < e.clientY) {
+                h = -h
+              }
+              if (rotate) {
+                w = Math.abs(k1 * e.clientX - e.clientY + b1) / Math.sqrt(k1 * k1 + 1)
+                if ((e.clientY - b1) / k1 > e.clientX) {
+                  w = -w
+                }
+              } else {
+                w = e.clientX - pos.x
+              }
 
+
+              detaX = w / 2
+              detaY = h / 2
+
+              copyData = copy(beforeData)
+              copyData.x += detaX
+              copyData.y -= detaY
+              copyData.width += w
+              copyData.height += h
+              data.areas = copyData
 
               break
             case "l": // 左中
               if (rotate) {
-                d = Math.abs(k1 * e.clientX - e.clientY + b1) / Math.sqrt(k1 * k1 + 1)
+                w = Math.abs(k1 * e.clientX - e.clientY + b1) / Math.sqrt(k1 * k1 + 1)
+                // 需要判断是拉伸还是压缩（即w的正负问题，转换成判断"点"在直线的左方还是右方，）
+                // y=kx+b =>x=(y-b)/k
+                // 在直线"左方"：(e.clientY-b)/k1>e.clientX,取"+"即可
+                // 在直线"右方"：(e.clientY-b1)/k1<e.clientX,取"-"即可
+                if ((e.clientY - b1) / k1 < e.clientX) {
+                  w = -w
+                }
               } else {
-                d =  pos.x-e.clientX
+                w = pos.x - e.clientX
               }
-              detaY = d / 2 * Math.sin(rotate)
-              detaX = d / 2 * Math.cos(rotate)
+              detaY = w / 2 * Math.sin(rotate)
+              detaX = w / 2 * Math.cos(rotate)
 
               copyData = copy(beforeData)
               copyData.x -= detaX
               copyData.y -= detaY
-              copyData.width += d
+              copyData.width += w
               data.areas = copyData
 
               break
             case "r": // 右中
               if (rotate) {
-                d = Math.abs(k1 * e.clientX - e.clientY + b1) / Math.sqrt(k1 * k1 + 1)
+                w = Math.abs(k1 * e.clientX - e.clientY + b1) / Math.sqrt(k1 * k1 + 1)
+
+                // 需要判断是拉伸还是压缩（即w的正负问题，转换成判断"点"在直线的左方还是右方，）
+                // y=kx+b =>x=(y-b)/k
+                // 在直线"右边"：(e.clientY-b)/k1<e.clientX,取"+"即可
+                // 在直线"右方"：(e.clientY-b1)/k1>e.clientX,取"-"即可
+                if ((e.clientY - b1) / k1 > e.clientX) {
+                  w = -w
+                }
               } else {
-                d = e.clientX - pos.x
+                w = e.clientX - pos.x
               }
-              detaY = d / 2 * Math.sin(rotate)
-              detaX = d / 2 * Math.cos(rotate)
+              detaY = w / 2 * Math.sin(rotate)
+              detaX = w / 2 * Math.cos(rotate)
 
               copyData = copy(beforeData)
               copyData.x += detaX
               copyData.y += detaY
-              copyData.width += d
+              copyData.width += w
               data.areas = copyData
               break
             case 'bc': // 下中
-              d = Math.abs(k * e.clientX - e.clientY + b) / Math.sqrt(k * k + 1)
-              detaX = d / 2 * Math.sin(rotate)
-              detaY = d / 2 * Math.cos(rotate)
-              console.log('d', d, 'detaX:', detaX, 'detaY:', detaY, pos.y - e.clientY)
+              h = Math.abs(k * e.clientX - e.clientY + b) / Math.sqrt(k * k + 1)
+
+              // 需要判断是拉伸还是压缩（即h的正负问题，转换成判断点在直线上方还是下方）
+              // 在直线"上方"：k * e.clientX + b>e.clientY,取"-"即可
+              // 在直线"下方"：k * e.clientX + b<=e.clientY,取"+"即可
+              // y=kx+b
+              if (k * e.clientX + b > e.clientY) {
+                h = -h
+              }
+              detaX = h / 2 * Math.sin(rotate)
+              detaY = h / 2 * Math.cos(rotate)
+              console.log('h', h, 'detaX:', detaX, 'detaY:', detaY, pos.y - e.clientY)
 
               copyData = copy(beforeData)
               copyData.x -= detaX
               copyData.y += detaY
-              copyData.height += d
+              copyData.height += h
               data.areas = copyData
               break
             case 'br': // 下右
