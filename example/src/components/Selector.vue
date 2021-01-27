@@ -23,7 +23,16 @@
     <div class="center">
       {{parseInt(areas.rotate)}}
     </div>
+
   </div>
+
+  <div class="debug"
+       v-for="(item,index) in debug"
+       :key="index"
+       :style="{left:item.x +'px',top:item.y+'px'}">
+
+  </div>
+
 </template>
 <script lang="ts">
   import {defineComponent, reactive, toRefs, watch, onMounted} from 'vue'
@@ -37,6 +46,7 @@
       x: number;
       y: number;
     };
+    debug: { x: number; y: number }[];
   }
 
   export default defineComponent({
@@ -68,7 +78,8 @@
         centerPos: {
           x: 0,
           y: 0
-        }
+        },
+        debug: []
       })
 
       const mouseDownHandle = (e: MouseEvent) => {
@@ -180,18 +191,31 @@
         //   console.error('e', e)
         // }
 
-        const a = {
-          x: (beforeData.x + beforeData.width) * Math.cos(rotate) + beforeData.y * Math.sin(rotate),
-          y: beforeData.y * Math.cos(rotate) - (beforeData.x + beforeData.width) * Math.sin(rotate)
-        }
-        const c = {
-          x: beforeData.x * Math.cos(rotate) + (beforeData.y + beforeData.height) * Math.sin(rotate),
-          y: (beforeData.y + beforeData.height) * Math.cos(rotate) - beforeData.x * Math.sin(rotate)
-        }
+        const x = beforeData.x
+        const y = beforeData.y
+        const width = beforeData.width
+        const height = beforeData.height
 
-        const slope = c.y - a.y ? -(c.x - a.x) / (c.y - a.y) : 0
+        const r = ((data.areas.rotate || 0)) * Math.PI / 180
+        const a = {
+          x: (width / 2) * Math.cos(r) + (height / 2) * Math.sin(r) + x,
+          y: y - ((height / 2) * Math.cos(r) - (width / 2) * Math.sin(r))
+        }
+        // const a = {
+        //   x: (x + width / 2) * Math.cos(rotate) + (y - height / 2) * Math.sin(rotate),
+        //   y: (y - height / 2) * Math.cos(rotate) - (x + width / 2) * Math.sin(rotate)
+        // }
+        // const c = {
+        //   x: (x - width / 2) * Math.cos(rotate) + (y + height / 2) * Math.sin(rotate),
+        //   y: (y + height / 2) * Math.cos(rotate) - (x - width / 2) * Math.sin(rotate)
+        // }
+        data.debug = [a]
+        // slopeAO
+        const slopeAO = (y - a.y) / (x - a.x)
+        const slope = slopeAO ? -1 / slopeAO : 0
+        // b=y-kx
         const b2 = a.y - slope * a.x
-        console.log('pointA', a, 'pointC', c, slope, b2)
+        console.log('pointA:', a, 'slope:', slope, 'b2:', b2)
 
         const mouseMoveHandle = (e: MouseEvent): void => {
           switch (dir) {
@@ -216,19 +240,35 @@
             case 'tl':
               break
             case 'tr': // 上右
+            {
               console.log('in tr case')
               h = Math.abs(slope * e.clientX - e.clientY + b2) / Math.sqrt(slope * slope + 1)
 
-              detaY = h / 2 * Math.sin(Math.atan(slope))
-              detaX = h / 2 * Math.cos(Math.atan(slope))
-              console.log('h', h, 'detaY:', detaY, 'detaX:', detaX)
+              // 判断在直线的左方还是右方，右方则变大，左方缩小
+              // y=kx+b =>x=(y-b)/k
+              // if ((e.clientY - b2) / slope > e.clientX || k * e.clientX + b < e.clientY) {
+              //   h = -h
+              // }
+
+              // todo:放大缩小处理(160~270deg时候)
+              const a = height / width
+              console.log('a', a, Math.atan(a))
+              detaY = h / 2 * Math.sin(Math.atan(a))
+              detaX = h / 2 * Math.cos(Math.atan(a))
+
+              const diffY = h / 2 * Math.sin(Math.atan(slopeAO))
+              const diffX = h / 2 * Math.cos(Math.atan(slopeAO))
+
+              console.log('h', h, 'detaY:', detaY, 'detaX:', detaX, 'diffX', diffX, 'diffY', diffY)
 
               copyData = copy(beforeData)
-              copyData.x += detaX
-              copyData.y -= detaY
+              copyData.x += diffX
+              copyData.y += diffY
+
               copyData.height += 2 * detaY
               copyData.width += 2 * detaX
               data.areas = copyData
+            }
               break
             case "l": // 左中
               if (rotate) {
@@ -447,4 +487,11 @@
     }
   }
 
+  .debug {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: red;
+    pointer-events: none;
+  }
 </style>
