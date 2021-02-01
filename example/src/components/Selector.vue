@@ -81,7 +81,9 @@
         },
         debug: []
       })
-
+      const copy = (data: any) => {
+        return JSON.parse(JSON.stringify(data))
+      }
       const mouseDownHandle = (e: MouseEvent) => {
         const pos = {
           x: e.clientX,
@@ -119,28 +121,45 @@
 
       const rotateMouseDownHandle = (e: MouseEvent) => {
         e.preventDefault()
+        const beforeData = copy(data.areas)
+        let copyData: Rect = {
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0
+        }
         data.centerPos = {
           x: data.areas.x,
           y: data.areas.y
         }
+        const center = data.centerPos
+        const pos = {
+          x: e.clientX,
+          y: e.clientY
+        }
+        const a = Math.sqrt((pos.x - data.centerPos.x) * (pos.x - data.centerPos.x) + (pos.y - data.centerPos.y) * (pos.y - data.centerPos.y))
         console.log('rotateMouseDownHandle', e)
 
-        const mouseMoveHandle = (e: MouseEvent) => {
-          // Math.atan2(e.clientY - centerPos.y, e.clientX - centerPos.x):算出来是一个弧度
-          // PI=180度 1度=PI/180
-          // 垂直坐标系下半轴
-          let deg: number = Math.atan2(e.clientY - data.centerPos.y, e.clientX - data.centerPos.x) * (180 / Math.PI) - 90
-          // 处理度数（y的下半轴为0度，顺时针）
-          if (deg < 0) {
-            deg += 360
-          }
-          data.areas.rotate = deg
-        }
-        // 根据传入的两个点，求角度，及起始点是x轴的真半轴、负半轴、y轴的正半轴、y轴的负半轴，顺时针or逆时针
-        // const getAngle = (px: number, py: number, mx: number, my: number, options: { clockwise: boolean, x: boolean }) => {
-        //
-        // }
 
+        const mouseMoveHandle = (e: MouseEvent) => {
+          // 余弦定理
+          const b = Math.sqrt((e.clientX - data.centerPos.x) * (e.clientX - data.centerPos.x) + (e.clientY - data.centerPos.y) * (e.clientY - data.centerPos.y))
+          const c = Math.sqrt((e.clientX - pos.x) * (e.clientX - pos.x) + (e.clientY - pos.y) * (e.clientY - pos.y))
+          const r = (a * a + b * b - c * c) / (2 * a * b)
+          let rotate = Math.acos(r) * 180 / Math.PI
+
+          // 判断是顺时针还是逆时针：逆时针的话，需要用360-rotate
+          if (((pos.x - center.x) * (e.clientY - center.y) - (pos.y - center.y) * (e.clientX - center.x)) < 0) {
+            rotate = 360 - rotate
+          }
+
+          console.log('r', r, 'rotate:', rotate)
+
+
+          copyData = copy(beforeData)
+          copyData.rotate = ((copyData.rotate || 0) + rotate) % 360
+          data.areas = copyData
+        }
         const mouseUpHandle = (e: MouseEvent) => {
           console.log('mouseUpHandle', e.clientX, e.clientY)
           document.body.removeEventListener("mousemove", mouseMoveHandle)
@@ -150,9 +169,6 @@
         document.body.addEventListener("mouseup", mouseUpHandle)
       }
 
-      const copy = (data: any) => {
-        return JSON.parse(JSON.stringify(data))
-      }
 
       const resizeMouseDownHandle = (e: MouseEvent, dir: string): void => {
         // 角度转幅度
