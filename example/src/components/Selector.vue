@@ -173,6 +173,7 @@
       const resizeMouseDownHandle = (e: MouseEvent, dir: string): void => {
         // 角度转幅度
         const rotate = (data.areas.rotate || 0) * Math.PI / 180
+        const angle = (data.areas.rotate || 0)
         // 上下斜率
         const k = Math.tan(rotate)
         const b = e.clientY - k * e.clientX
@@ -200,13 +201,6 @@
           x: e.clientX,
           y: e.clientY
         }
-
-        // try {
-        //
-        // } catch (e) {
-        //   console.error('e', e)
-        // }
-
         const x = beforeData.x
         const y = beforeData.y
         const width = beforeData.width
@@ -217,14 +211,6 @@
           x: (width / 2) * Math.cos(r) + (height / 2) * Math.sin(r) + x,
           y: y - ((height / 2) * Math.cos(r) - (width / 2) * Math.sin(r))
         }
-        // const a = {
-        //   x: (x + width / 2) * Math.cos(rotate) + (y - height / 2) * Math.sin(rotate),
-        //   y: (y - height / 2) * Math.cos(rotate) - (x + width / 2) * Math.sin(rotate)
-        // }
-        // const c = {
-        //   x: (x - width / 2) * Math.cos(rotate) + (y + height / 2) * Math.sin(rotate),
-        //   y: (y + height / 2) * Math.cos(rotate) - (x - width / 2) * Math.sin(rotate)
-        // }
         data.debug = [a]
         // slopeAO
         const slopeAO = (y - a.y) / (x - a.x)
@@ -241,8 +227,15 @@
               // 在直线"上方"：k * e.clientX + b>=e.clientY,取"+"即可
               // 在直线"下方"：k * e.clientX + b<e.clientY,取"-"即可
               // y=kx+b
-              if (k * e.clientX + b < e.clientY) {
-                h = -h
+              // 但是由于旋转了之后，发生了变化，以上的伸缩与拉伸不成立
+              if (angle < 90 || angle > 270) {
+                if (k * e.clientX + b < e.clientY) {
+                  h = -h
+                }
+              } else {
+                if (k * e.clientX + b > e.clientY) {
+                  h = -h
+                }
               }
               detaX = h / 2 * Math.sin(rotate)
               detaY = h / 2 * Math.cos(rotate)
@@ -260,20 +253,33 @@
               console.log('in tr case')
               h = Math.abs(slope * e.clientX - e.clientY + b2) / Math.sqrt(slope * slope + 1)
 
-              // 判断在直线的左方还是右方，右方则变大，左方缩小
-              // y=kx+b =>x=(y-b)/k
-              // if ((e.clientY - b2) / slope > e.clientX || k * e.clientX + b < e.clientY) {
-              //   h = -h
-              // }
-
-              // todo:放大缩小处理(160~270deg时候)
+              if (angle < 90 || angle > 270) {
+                // 判断在直线的左方还是右方，右方则变大，左方缩小
+                // y=kx+b =>x=(y-b)/k
+                if (k * e.clientX + b < e.clientY) {
+                  h = -h
+                }
+              } else {
+                if (k * e.clientX + b >= e.clientY) {
+                  h = -h
+                }
+              }
+              // todo:放大缩小处理
               const a = height / width
               console.log('a', a, Math.atan(a))
               detaY = h / 2 * Math.sin(Math.atan(a))
               detaX = h / 2 * Math.cos(Math.atan(a))
 
-              const diffY = h / 2 * Math.sin(Math.atan(slopeAO))
-              const diffX = h / 2 * Math.cos(Math.atan(slopeAO))
+              const oaAngle = Math.atan(slopeAO)
+              console.log('oaAngle', oaAngle)
+              let diffY = h / 2 * Math.sin(oaAngle)
+              let diffX = h / 2 * Math.cos(oaAngle)
+
+              if ((rotate - oaAngle) >= Math.PI / 2 && (rotate - oaAngle) <= Math.PI * 3 / 2) {
+                console.log('diffX,diffY取反')
+                diffY = -diffY
+                diffX = -diffX
+              }
 
               console.log('h', h, 'detaY:', detaY, 'detaX:', detaX, 'diffX', diffX, 'diffY', diffY)
 
@@ -293,8 +299,14 @@
                 // y=kx+b =>x=(y-b)/k
                 // 在直线"左方"：(e.clientY-b)/k1>e.clientX,取"+"即可
                 // 在直线"右方"：(e.clientY-b1)/k1<e.clientX,取"-"即可
-                if ((e.clientY - b1) / k1 < e.clientX) {
-                  w = -w
+                if (angle < 90 || angle > 270) {
+                  if ((e.clientY - b1) / k1 < e.clientX) {
+                    w = -w
+                  }
+                } else {
+                  if ((e.clientY - b1) / k1 > e.clientX) {
+                    w = -w
+                  }
                 }
               } else {
                 w = pos.x - e.clientX
@@ -317,8 +329,14 @@
                 // y=kx+b =>x=(y-b)/k
                 // 在直线"右边"：(e.clientY-b)/k1<e.clientX,取"+"即可
                 // 在直线"右方"：(e.clientY-b1)/k1>e.clientX,取"-"即可
-                if ((e.clientY - b1) / k1 > e.clientX) {
-                  w = -w
+                if (angle < 90 || angle > 270) {
+                  if ((e.clientY - b1) / k1 > e.clientX) {
+                    w = -w
+                  }
+                } else {
+                  if ((e.clientY - b1) / k1 < e.clientX) {
+                    w = -w
+                  }
                 }
               } else {
                 w = e.clientX - pos.x
@@ -339,8 +357,15 @@
               // 在直线"上方"：k * e.clientX + b>e.clientY,取"-"即可
               // 在直线"下方"：k * e.clientX + b<=e.clientY,取"+"即可
               // y=kx+b
-              if (k * e.clientX + b > e.clientY) {
-                h = -h
+
+              if (angle < 90 || angle > 270) {
+                if (k * e.clientX + b > e.clientY) {
+                  h = -h
+                }
+              } else {
+                if (k * e.clientX + b < e.clientY) {
+                  h = -h
+                }
               }
               detaX = h / 2 * Math.sin(rotate)
               detaY = h / 2 * Math.cos(rotate)
