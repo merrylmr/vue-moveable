@@ -394,26 +394,27 @@
         const mouseMoveHandle = (e: MouseEvent): void => {
           const oaAngle = Math.atan(slopeAO)
           d = getDistance(k, -1, b, {x: e.clientX, y: e.clientY})
-          if ((rotate) < Math.PI / 2 || (rotate) > Math.PI * 3 / 2) {
-            // 判断在直线的左方还是右方，右方则变大，左方缩小
-            // y=kx+b =>x=(y-b)/k
+
+          // 在第三、第四象限
+          if (a.y - y < 0) {
+            // 在直线的下方：y的值越大，上方：y的值越小
             if (k * e.clientX + b < e.clientY) {
               d = -d
             }
           } else {
+            // 在1、2象限：y的值越小越大，越大越小（直角坐标系）
             if (k * e.clientX + b > e.clientY) {
               d = -d
             }
           }
 
           // 对角线的斜率
-          const a = height / width
-          detaY = d / 2 * Math.sin(Math.atan(a))
-          detaX = d / 2 * Math.cos(Math.atan(a))
+          const slopeA = height / width
+          detaY = d / 2 * Math.sin(Math.atan(slopeA))
+          detaX = d / 2 * Math.cos(Math.atan(slopeA))
 
           let diffY = d / 2 * Math.sin(oaAngle)
           let diffX = d / 2 * Math.cos(oaAngle)
-
 
           if ((rotate - oaAngle) >= Math.PI / 2 && (rotate - oaAngle) <= Math.PI * 3 / 2) {
             console.log('diffX,diffY取反')
