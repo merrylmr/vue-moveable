@@ -35,13 +35,12 @@
 
 </template>
 <script lang="ts">
-  import {defineComponent, reactive, toRefs, watch, onMounted} from 'vue'
+  import {defineComponent, reactive, toRefs, watch, computed, onMounted} from 'vue'
   import {Rect} from '@/types/index.d.ts'
 
   interface DataProps {
     handles: string[];
     areas: Rect;
-    cursors: string[];
     centerPos: {
       x: number;
       y: number;
@@ -66,8 +65,7 @@
     },
     setup(props) {
       const data: DataProps = reactive({
-        handles: ['tl', 'tc', 'tr', 'l', 'br', 'bc', 'bl', 'r'],
-        cursors: ['nw-resize', 'n-resize', 'ne-resize', 'w-resize', 'nw-resize', 's-resize', 'sw-resize', 'e-resize'],
+        handles: ['tl', 'tc', 'tr', 'r', 'br', 'bc', 'bl', 'l'],
         areas: {
           width: 200,
           height: 200,
@@ -80,6 +78,14 @@
           y: 0
         },
         debug: []
+      })
+
+      const cursors = computed(() => {
+        const rotate = (data.areas.rotate || 0)
+        const moveSteep = Math.floor(rotate / 45)
+        let arr = ['nw-resize', 'n-resize', 'ne-resize', 'e-resize', 'se-resize', 's-resize', 'sw-resize', 'w-resize']
+        arr = arr.splice(moveSteep).concat(arr.splice(0, moveSteep))
+        return arr
       })
       const copy = (data: any) => {
         return JSON.parse(JSON.stringify(data))
@@ -379,7 +385,7 @@
         const y = beforeData.y
         const width = beforeData.width
         const height = beforeData.height
-        // 右上角旋转之后的角度
+        // 右上角旋转之后的角度（w/2,-h/2）
         const a = {
           x: (width / 2) * Math.cos(rotate) + (height / 2) * Math.sin(rotate) + x,
           y: y - ((height / 2) * Math.cos(rotate) - (width / 2) * Math.sin(rotate))
@@ -437,6 +443,225 @@
         document.body.addEventListener('mousemove', mouseMoveHandle)
         document.body.addEventListener('mouseup', mouseUpHandle)
       }
+      // 左上
+      const topLeftResizeHandle = (): void => {
+        const rotate = (data.areas.rotate || 0) * Math.PI / 180
+        // 拖拽之前的大小
+        const beforeData = copy(data.areas)
+        let copyData: Rect = {
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0
+        }
+        const x = beforeData.x
+        const y = beforeData.y
+        const width = beforeData.width
+        const height = beforeData.height
+
+        // 右上角旋转之后的角度
+        const a = {
+          x: (-width / 2) * Math.cos(rotate) + (height / 2) * Math.sin(rotate) + x,
+          y: y - ((height / 2) * Math.cos(rotate) + (width / 2) * Math.sin(rotate))
+        }
+
+        let d, detaX, detaY
+        data.debug = [a]
+        const slopeAO = (y - a.y) / (x - a.x)
+        const k = slopeAO ? -1 / slopeAO : 0
+        const b = a.y - k * a.x
+        const mouseMoveHandle = (e: MouseEvent): void => {
+          const oaAngle = Math.atan(slopeAO)
+          d = getDistance(k, -1, b, {x: e.clientX, y: e.clientY})
+
+          // 在第三、第四象限
+          if (a.y - y < 0) {
+            // 在直线的下方：y的值越大，上方：y的值越小
+            if (k * e.clientX + b < e.clientY) {
+              d = -d
+            }
+          } else {
+            // 在1、2象限：y的值越小越大，越大越小（直角坐标系）
+            if (k * e.clientX + b > e.clientY) {
+              d = -d
+            }
+          }
+
+          // 对角线的斜率
+          const slopeA = height / width
+          detaY = d / 2 * Math.sin(Math.atan(slopeA))
+          detaX = d / 2 * Math.cos(Math.atan(slopeA))
+
+          let diffY = d / 2 * Math.sin(oaAngle)
+          let diffX = d / 2 * Math.cos(oaAngle)
+
+          if ((rotate - oaAngle) >= Math.PI / 2 && (rotate - oaAngle) <= Math.PI * 3 / 2) {
+            console.log('diffX,diffY取反')
+            diffY = -diffY
+            diffX = -diffX
+          }
+
+          copyData = copy(beforeData)
+          copyData.x -= diffX
+          copyData.y -= diffY
+
+          copyData.height += 2 * detaY
+          copyData.width += 2 * detaX
+          data.areas = copyData
+        }
+        const mouseUpHandle = (): void => {
+          document.body.removeEventListener('mousemove', mouseMoveHandle)
+          document.body.removeEventListener('mouseup', mouseUpHandle)
+        }
+        document.body.addEventListener('mousemove', mouseMoveHandle)
+        document.body.addEventListener('mouseup', mouseUpHandle)
+      }
+      // 右下
+      const bottomRightResizeHandle = (): void => {
+        const rotate = (data.areas.rotate || 0) * Math.PI / 180
+        // 拖拽之前的大小
+        const beforeData = copy(data.areas)
+        let copyData: Rect = {
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0
+        }
+        const x = beforeData.x
+        const y = beforeData.y
+        const width = beforeData.width
+        const height = beforeData.height
+        // 左下角旋转之后的角度
+        const a = {
+          x: x + ((width / 2) * Math.cos(rotate) - (height / 2) * Math.sin(rotate)),
+          y: y + ((height / 2) * Math.cos(rotate) + (width / 2) * Math.sin(rotate))
+        }
+        let d, detaX, detaY
+        data.debug = [a]
+
+        const slopeAO = (y - a.y) / (x - a.x)
+        const k = slopeAO ? -1 / slopeAO : 0
+        const b = a.y - k * a.x
+
+        const mouseMoveHandle = (e: MouseEvent): void => {
+          const oaAngle = Math.atan(slopeAO)
+          d = getDistance(k, -1, b, {x: e.clientX, y: e.clientY})
+
+          // 在第三、第四象限
+          if (a.y - y < 0) {
+            // 在直线的下方：y的值越大，上方：y的值越小
+            if (k * e.clientX + b < e.clientY) {
+              d = -d
+            }
+          } else {
+            // 在1、2象限：y的值越小越大，越大越小（直角坐标系）
+            if (k * e.clientX + b > e.clientY) {
+              d = -d
+            }
+          }
+
+          // 对角线的斜率
+          const slopeA = height / width
+          detaY = d / 2 * Math.sin(Math.atan(slopeA))
+          detaX = d / 2 * Math.cos(Math.atan(slopeA))
+
+          let diffY = d / 2 * Math.sin(oaAngle)
+          let diffX = d / 2 * Math.cos(oaAngle)
+
+          if ((rotate - oaAngle) >= Math.PI / 2 && (rotate - oaAngle) <= Math.PI * 3 / 2) {
+            console.log('diffX,diffY取反')
+            diffY = -diffY
+            diffX = -diffX
+          }
+
+          copyData = copy(beforeData)
+          copyData.x += diffX
+          copyData.y += diffY
+
+          copyData.height += 2 * detaY
+          copyData.width += 2 * detaX
+          data.areas = copyData
+        }
+        const mouseUpHandle = (): void => {
+          document.body.removeEventListener('mousemove', mouseMoveHandle)
+          document.body.removeEventListener('mouseup', mouseUpHandle)
+        }
+        document.body.addEventListener('mousemove', mouseMoveHandle)
+        document.body.addEventListener('mouseup', mouseUpHandle)
+      }
+      // 左下
+      const bottomLeftResizeHandle = (): void => {
+        const rotate = (data.areas.rotate || 0) * Math.PI / 180
+        // 拖拽之前的大小
+        const beforeData = copy(data.areas)
+        let copyData: Rect = {
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0
+        }
+        const x = beforeData.x
+        const y = beforeData.y
+        const width = beforeData.width
+        const height = beforeData.height
+        // 左下角旋转之后的角度(-w/2,h/2)
+        const a = {
+          x: x + ((-width / 2) * Math.cos(rotate) - (height / 2) * Math.sin(rotate)),
+          y: y + ((height / 2) * Math.cos(rotate) + (-width / 2) * Math.sin(rotate))
+        }
+        let d, detaX, detaY
+        data.debug = [a]
+
+        const slopeAO = (y - a.y) / (x - a.x)
+        const k = slopeAO ? -1 / slopeAO : 0
+        const b = a.y - k * a.x
+
+        const mouseMoveHandle = (e: MouseEvent): void => {
+          const oaAngle = Math.atan(slopeAO)
+          d = getDistance(k, -1, b, {x: e.clientX, y: e.clientY})
+
+          // 在第三、第四象限
+          if (a.y - y < 0) {
+            // 在直线的下方：y的值越大，上方：y的值越小
+            if (k * e.clientX + b < e.clientY) {
+              d = -d
+            }
+          } else {
+            // 在1、2象限：y的值越小越大，越大越小（直角坐标系）
+            if (k * e.clientX + b > e.clientY) {
+              d = -d
+            }
+          }
+
+          // 对角线的斜率
+          const slopeA = height / width
+          detaY = d / 2 * Math.sin(Math.atan(slopeA))
+          detaX = d / 2 * Math.cos(Math.atan(slopeA))
+
+          let diffY = d / 2 * Math.sin(oaAngle)
+          let diffX = d / 2 * Math.cos(oaAngle)
+
+          if ((rotate - oaAngle) >= Math.PI / 2 && (rotate - oaAngle) <= Math.PI * 3 / 2) {
+            console.log('diffX,diffY取反')
+            diffY = -diffY
+            diffX = -diffX
+          }
+
+          copyData = copy(beforeData)
+          copyData.x -= diffX
+          copyData.y -= diffY
+
+          copyData.height += 2 * detaY
+          copyData.width += 2 * detaX
+          data.areas = copyData
+        }
+        const mouseUpHandle = (): void => {
+          document.body.removeEventListener('mousemove', mouseMoveHandle)
+          document.body.removeEventListener('mouseup', mouseUpHandle)
+        }
+        document.body.addEventListener('mousemove', mouseMoveHandle)
+        document.body.addEventListener('mouseup', mouseUpHandle)
+      }
       const resizeMouseDownHandle = (e: MouseEvent, dir: string): void => {
         switch (dir) {
           case 'l':
@@ -453,6 +678,15 @@
             break
           case 'tr':
             topRightResizeHandle()
+            break
+          case 'tl':
+            topLeftResizeHandle()
+            break
+          case 'br':
+            bottomRightResizeHandle()
+            break
+          case 'bl':
+            bottomLeftResizeHandle()
             break
           default:
             break
@@ -471,6 +705,7 @@
       })
       return {
         ...toRefsData,
+        cursors,
         mouseDownHandle,
         rotateMouseDownHandle,
         resizeMouseDownHandle
