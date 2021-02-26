@@ -386,6 +386,7 @@
         const width = beforeData.width
         const height = beforeData.height
         // 右上角旋转之后的角度（w/2,-h/2）
+        // 参考文档：https://blog.csdn.net/atu_1982/article/details/80345611
         const a = {
           x: (width / 2) * Math.cos(rotate) + (height / 2) * Math.sin(rotate) + x,
           y: y - ((height / 2) * Math.cos(rotate) - (width / 2) * Math.sin(rotate))
